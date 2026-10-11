@@ -7037,12 +7037,29 @@ local SPELL_POWER_PAIN = SPELL_POWER_PAIN or (PowerEnum and PowerEnum.Pain) or 1
 		end
 	end
 
+	--custom (Details_WindfuryTotem): a plugin may re-attribute a melee swing to another actor as a spell hit.
+	--Details222.Parser.SwingRedirect(time, sourceGUID, sourceName, sourceFlags, targetGUID, isOffHand, amount) returns nothing
+	--to keep the swing as it is, or newGUID, newName, newFlags, spellId, spellName to log the swing as that actor's spell damage.
+	Details222.Parser.SwingRedirectSupported = true
+	local function dispatchRedirectedSwing(func, token, time, who_serial, who_name, who_flags, target_serial, target_name, target_flags, target_flags2, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12)
+		local newSerial, newName, newFlags, spellId, spellName = Details222.Parser.SwingRedirect(time, who_serial, who_name, who_flags, target_serial, A10, A1)
+		if (newSerial) then
+			--SWING_DAMAGE payload: amount, overkill, school, resisted, blocked, absorbed, critical, glancing, crushing, isOffHand
+			--SPELL_DAMAGE puts spellId, spellName, spellSchool in front of the same payload
+			return func(nil, "SPELL_DAMAGE", time, newSerial, newName, newFlags, target_serial, target_name, target_flags, target_flags2, spellId, spellName, 1, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10)
+		end
+		return func(nil, token, time, who_serial, who_name, who_flags, target_serial, target_name, target_flags, target_flags2, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12)
+	end
+
 	-- ~parserstart ~startparser ~cleu ~parser
 	function Details222.Parser.OnParserEvent()
 		local time, token, hidding, who_serial, who_name, who_flags, who_flags2, target_serial, target_name, target_flags, target_flags2, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12 = CombatLogGetCurrentEventInfo()
 		local func = token_list[token]
 
 		if (func) then
+			if (token == "SWING_DAMAGE" and Details222.Parser.SwingRedirect) then --custom
+				return dispatchRedirectedSwing(func, token, time, who_serial, who_name, who_flags, target_serial, target_name, target_flags, target_flags2, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12)
+			end
 			return func(nil, token, time, who_serial, who_name, who_flags, target_serial, target_name, target_flags, target_flags2, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12)
 		end
 	end
@@ -7052,6 +7069,9 @@ local SPELL_POWER_PAIN = SPELL_POWER_PAIN or (PowerEnum and PowerEnum.Pain) or 1
 		local func = token_list[token]
 
 		if (func) then
+			if (token == "SWING_DAMAGE" and Details222.Parser.SwingRedirect) then --custom
+				return dispatchRedirectedSwing(func, token, time, sourceGUID, sourceName, sourceFlags, targetGUID, targetName, targetFlags, targetFlags2, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12)
+			end
 			return func(nil, token, time, sourceGUID, sourceName, sourceFlags, targetGUID, targetName, targetFlags, targetFlags2, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12)
 		end
 	end
@@ -7087,6 +7107,9 @@ local SPELL_POWER_PAIN = SPELL_POWER_PAIN or (PowerEnum and PowerEnum.Pain) or 1
 		local time, token, hidding, who_serial, who_name, who_flags, who_flags2, target_serial, target_name, target_flags, target_flags2, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12 = CombatLogGetCurrentEventInfo()
 		local func = out_of_combat_interresting_events[token]
 		if (func) then
+			if (token == "SWING_DAMAGE" and Details222.Parser.SwingRedirect) then --custom
+				return dispatchRedirectedSwing(func, token, time, who_serial, who_name, who_flags, target_serial, target_name, target_flags, target_flags2, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12)
+			end
 			return func(nil, token, time, who_serial, who_name, who_flags, target_serial, target_name, target_flags, target_flags2, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12)
 		end
 	end
